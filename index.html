@@ -25,6 +25,9 @@
     <script>
         const socket = io();
         let chatroom = "general";
+        let credentials = {};
+        let lastMessageWasLogin = false;
+        let backoff = 1000;
 
         const form = document.getElementById('form');
         const input = document.getElementById('input');
@@ -32,16 +35,51 @@
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             if (input.value) {
+                // check to see if we typed /login. If so, save the credentials here.
+                if (input.value.startsWith('/login')) {
+                    credentials = {
+                        username: input.value.split(' ')[1],
+                        password: input.value.split(' ')[2]
+                    };
+                    lastMessageWasLogin = true;
+                    socket.emit('general', '/login ' + credentials.username + ' ' + credentials.password);
+                    input.value = '';
+                    return;
+                }
                 socket.emit(chatroom, input.value);
                 input.value = '';
             }
         });
 
         socket.on(chatroom, (msg) => {
+            // if the message is "Registered", we have successfully logged in.
+            if (lastMessageWasLogin && msg === "Registered") {
+                lastMessageWasLogin = false;
+                return;
+            } else if (lastMessageWasLogin && msg === 'Invalid username or password') {
+                lastMessageWasLogin = false;
+                credentials = {};
+                return;
+            } 
+            console.log(msg);
             const item = document.createElement('li');
             item.textContent = msg;
             messages.appendChild(item);
             window.scrollTo(0, document.body.scrollHeight);
+        });
+
+        //on disconnect
+        socket.on('disconnect', () => {
+            setTimeout(() => {
+                backoff += backoff;
+                // try to reconnect
+                socket.connect();
+                // if we have credentials, try to log back in
+                if (credentials.username && credentials.password) {
+                    socket.emit('general', '/login ' + credentials.username + ' ' + credentials.password);
+                    lastMessageWasLogin = true;
+                }
+            }, backoff);
         });
     </script>
   </body>
