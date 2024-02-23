@@ -98,6 +98,40 @@ io.on('connection', (socket) => {
                         socket.on(args[0], handleChatMessage);
                     }
                     break;
+
+                case '/invite': // /invite <room> <user>
+                console.log(rooms);
+                console.log(args);
+                    if (!rooms[args[0]]) {
+                        socket.emit(socket.current_room, 'Room does not exist');
+                        return;
+                    }                   
+                    // check if the user to be invited exists
+                    if (!users[args[1]]) {
+                        socket.emit(socket.current_room, args[1] + ' does not exist');
+                        return;
+                    }
+                    // check if the socket user is allowed to join the room
+                    if (rooms[args[0]].public === "private" && !rooms[args[0]].allowed_users.includes(socket.username)) {
+                        socket.emit(socket.current_room, 'You are not authorized to join this room');
+                        return;
+                    }
+                    // check if the user is already in the room
+                    if (rooms[args[0]].current_users.includes(args[1])) {
+                        socket.emit(socket.current_room, args[1] + ' is already in the room');
+                        return;
+                    }
+                    // send the invite
+                    socket.emit(args[1], 'You have been invited to join ' + args[0]);
+                    // add the user's username to the list of allowed users
+                    rooms[args[0]].allowed_users.push(args[1]);
+                    
+                    break;
+
+
+                    
+                    
+
                 case '/join': // /join <room>
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
