@@ -90,7 +90,7 @@ io.on('connection', (socket) => {
                         socket.emit(socket.current_room, 'Room already exists');
                         return;
                     } else {
-                        socket.emit(socket.current_room, args[0] + 'Room created');
+                        socket.emit(socket.current_room, 'Room created' +  args[0]);
                         rooms[args[0]] = {
                             "name": args[0],
                             "public": args[1],
@@ -99,12 +99,20 @@ io.on('connection', (socket) => {
                             "messages": []
                         };
                         socket.on(args[0], handleChatMessage);
+                        socket.emit(socket.current_room, 'Room created: ' + args[0]);
+                        socket.current_room = args[0]; // Update the current room to the newly created room
                     }
                     break;
 
+                case '/list':
+                    // identify rooms user is allowed into, display list to user
+                    let roomList = Object.keys(rooms).filter(room => rooms[room].public === "public" || rooms[room].allowed_users.includes(socket.username)).join(" ");
+                    // give room list to user
+                    socket.emit(socket.current_room, 'Current room: ' + socket.current_room + ' List of rooms: ' + roomList);
+                    break;
+
                 case '/invite': // /invite <room> <user>
-                console.log(rooms);
-                console.log(args);
+
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
@@ -130,11 +138,6 @@ io.on('connection', (socket) => {
                     rooms[args[0]].allowed_users.push(args[1]);
                     
                     break;
-
-
-                    
-                    
-
                 case '/join': // /join <room>
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
