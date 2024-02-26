@@ -26,6 +26,14 @@ fs.readFile('users.json', 'utf8', (err, data) => {
         return;
     }
     users = JSON.parse(data);
+    // ensure users have a password property in case they just have a string value
+    for (let user in users) {
+        if (typeof users[user] === "string") {
+            users[user] = {
+                "password": users[user]
+            };
+        }
+    }
 });
 
 fs.readFile('rooms.json', 'utf8', (err, data) => {
@@ -73,8 +81,31 @@ io.on('connection', (socket) => {
                         };
                         rooms.general.allowed_users.push(args[0]);
                     }
+                    // make a serializeable copy of the users object
+                    let usersCopy = {};
+                    for (let user in users) {
+                        usersCopy[user] = {
+                            "password": users[user]["password"]
+                        }
+                    }
+                    // save the user to the users.json file
+                    fs.writeFile('users.json', JSON.stringify(usersCopy), (err) => {
+                        if (err) {
+                            console.error(err);
+                            return;
+                        }
+                        console.log('users.json updated');
+                    });
                     break;
                 case '/login':
+                    console.log(users);
+                    console.log(args[0]);
+                    // check to see if the user has only a string value for the password
+                    if (typeof users[args[0]] === "string") {
+                        users[args[0]] = {
+                            "password": users[args[0]]
+                        };
+                    }
                     // check the password
                     if (users[args[0]]["password"] === args[1]) {
                         socket.emit(socket.current_room, 'Logged in');
@@ -105,9 +136,11 @@ io.on('connection', (socket) => {
                     break;
 
                 case '/list':
+                    console.log(rooms)
                     // identify rooms user is allowed into, display list to user
                     let roomList = Object.keys(rooms).filter(room => rooms[room].public === "public" || rooms[room].allowed_users.includes(socket.username)).join(" ");
                     // give room list to user
+                    console.log(roomList);
                     socket.emit(socket.current_room, 'Current room: ' + socket.current_room + ' List of rooms: ' + roomList);
                     break;
 
@@ -139,6 +172,7 @@ io.on('connection', (socket) => {
                     
                     break;
                 case '/join': // /join <room>
+                    console.log(args[0]);
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
@@ -153,6 +187,7 @@ io.on('connection', (socket) => {
                     socket.emit(socket.current_room, 'Joined room ' + args[0]);
                     rooms[args[0]].current_users.push(socket.username);
                     socket.current_room = args[0];
+                    console.log(socket)
                     break;
                 case '/dm': // /dm <username> <message string>
                     // same as /create, but room is private & only 2 users are allowed in it
