@@ -102,27 +102,10 @@ io.on('connection', (socket) => {
                     break;
                 case '/list':
                     // identify rooms user is allowed into, display list to user
-                    let roomList = "";
-                    //look through rooms object
-                    for (let room in rooms) {
-                        //if room is public or user is allowed to join, add room to list
-                        console.log(rooms[room]);
-                        if (rooms[room].public === "public".toLowerCase() || rooms[room].allowed_users.includes(socket.username)) {
-                            roomList += room + " ";
-                        }
-                    }
-                    //give room list to user
-                    socket.emit(socket.current_room, 'Current room:' + socket.current_room + 'List of rooms:' + roomList);
+                    let roomList = Object.keys(rooms).filter(room => rooms[room].public === "public" || rooms[room].allowed_users.includes(socket.username)).join(" ");
+                    // give room list to user
+                    socket.emit(socket.current_room, 'Current room: ' + socket.current_room + ' List of rooms: ' + roomList);
                     break;
-                case '/join': // /join <room>
-                    if (!rooms[args[0]]) {
-                        socket.emit(socket.current_room, 'Room does not exist');
-                        return;
-                    }
-                    if (rooms[args[0]].public === "private" && !rooms[args[0]].allowed_users.includes(socket.username)) {
-                        socket.emit(socket.current_room, 'You are not authorized to join this room');
-                        return;
-                    }
                     // leave the current room
                     socket.emit(socket.current_room, 'Left room ' + socket.current_room);
                     rooms[socket.current_room].current_users = rooms[socket.current_room].current_users.filter(user => user !== socket.username);
