@@ -68,15 +68,18 @@ io.on('connection', (socket) => {
                         return;
                     } else {
                         socket.emit(socket.current_room, 'Registered');
-                        users[args[0]] = args[1];
+                        users[args[0]] = {
+                            "password": args[1]
+                        };
                         rooms.general.allowed_users.push(args[0]);
                     }
                     break;
                 case '/login':
                     // check the password
-                    if (users[args[0]] === args[1]) {
+                    if (users[args[0]]["password"] === args[1]) {
                         socket.emit(socket.current_room, 'Logged in');
                         socket.username = args[0];
+                        users[args[0]]["socket"] = socket;
                     } else {
                         socket.emit(socket.current_room, 'Invalid username or password');
                     }
@@ -147,6 +150,40 @@ io.on('connection', (socket) => {
                     socket.emit(socket.current_room, 'Joined room ' + args[0]);
                     rooms[args[0]].current_users.push(socket.username);
                     socket.current_room = args[0];
+                    break;
+                case '/dm': // /dm <username> <message string>
+                    // same as /create, but room is private & only 2 users are allowed in it
+                    
+                    // build room name
+                    let recipientUsername = args[0];
+                    let dmRoomName = socket.username + '_' + recipientUsername;
+                    let reversedDmRoomName = recipientUsername + '_' + socket.username;
+
+                    // check if room exists
+                    let dmRoomObj;
+                    if (rooms[dmRoomName]) {
+                        dmRoomObj = rooms[dmRoomName];
+                    } else if (rooms[reversedDmRoomName]) {
+                        dmRoomObj = rooms[reversedDmRoomName]
+                    } else {
+                        // create room since it doesn't exist
+                        rooms[dmRoomName] = {
+                            "name": dmRoomName,
+                            "public": "false",
+                            "allowed_users": [socket.username, recipientUsername],
+                            "current_users": [],
+                            "messages": []
+                        };
+                    }
+                    // send message
+                    const directMessage = args.slice(1).join(" ");
+                    socket.emit(
+                        socket.current_room, socket.username + ": " + directMessage
+                    );
+                    const recipientSocket = users[recipientUsername]["socket"];
+                    recipientSocket.emit(
+                        recipientSocket.current_room, socket.username + ": " + directMessage
+                    );
                     break;
                 default:
                     socket.emit(socket.current_room, 'Unknown command');
