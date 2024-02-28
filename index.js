@@ -228,6 +228,14 @@ io.on('connection', (socket) => {
                 return;
             }
             console.log(socket.current_room, socket.username + ': ' + msg);
+            rooms[socket.current_room].messages.push(socket.username + ': ' + msg);
+            fs.writeFile('rooms.json', JSON.stringify(rooms), (err) => {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                console.log('rooms.json updated');
+            });
             io.emit(socket.current_room, socket.username + " " + msg);
         }
     }
