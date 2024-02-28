@@ -64,12 +64,12 @@
                 return;
             }
             console.log('msg', msg);
-            // check for the string "Joined room <room>" and update the chatroom variable
-            if (msg.startsWith('Joined room')) {
+            // check for the string "Left room <room> to join <new_room>" and update the chatroom variable
+            if (msg.startsWith('Left room')) {
                 last_chatroom = chatroom;
                 socket.off(last_chatroom, handleMessage);
-                chatroom = msg.split(' ')[2];
-                console.log('chatroom', chatroom);
+                chatroom = msg.split(' ')[5];
+                console.log('chatroom: ', chatroom);
                 socket.on(chatroom, handleMessage);
             }
             console.log(chatroom, msg);

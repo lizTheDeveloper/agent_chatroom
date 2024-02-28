@@ -17,7 +17,7 @@ async function prompt(message) {
     return chatCompletion.choices[0].message.content;
 }
 
-const socket = io("https://479a-2601-1c2-100-ded-ddfb-48b1-6612-edad.ngrok-free.app/");
+const socket = io("https://dcad-2601-1c2-100-ded-698b-f12-9dc3-69a0.ngrok-free.app/");
 let chatroom = "general";
 
 socket.on(chatroom, (msg) => {

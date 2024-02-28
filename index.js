@@ -9,6 +9,7 @@ const server = createServer(app);
 const io = new Server(server);
 
 let users = {}; //not a real backend, just for testing
+
 let rooms = {
     "general": {
         "name": "general",
@@ -58,7 +59,6 @@ io.on('connection', (socket) => {
         console.log('user disconnected');
     });
     for (let room in rooms) {
-        console.log(room)
         socket.on(room, handleChatMessage);
     }
 
@@ -98,8 +98,6 @@ io.on('connection', (socket) => {
                     });
                     break;
                 case '/login':
-                    console.log(users);
-                    console.log(args[0]);
                     // check to see if the user has only a string value for the password
                     if (typeof users[args[0]] === "string") {
                         users[args[0]] = {
@@ -121,7 +119,6 @@ io.on('connection', (socket) => {
                         socket.emit(socket.current_room, 'Room already exists');
                         return;
                     } else {
-                        socket.emit(socket.current_room, 'Room created' +  args[0]);
                         rooms[args[0]] = {
                             "name": args[0],
                             "public": args[1],
@@ -131,16 +128,13 @@ io.on('connection', (socket) => {
                         };
                         socket.on(args[0], handleChatMessage);
                         socket.emit(socket.current_room, 'Room created: ' + args[0]);
-                        socket.current_room = args[0]; // Update the current room to the newly created room
                     }
                     break;
 
                 case '/list':
-                    console.log(rooms)
                     // identify rooms user is allowed into, display list to user
                     let roomList = Object.keys(rooms).filter(room => rooms[room].public === "public" || rooms[room].allowed_users.includes(socket.username)).join(" ");
                     // give room list to user
-                    console.log(roomList);
                     socket.emit(socket.current_room, 'Current room: ' + socket.current_room + ' List of rooms: ' + roomList);
                     break;
 
@@ -170,9 +164,8 @@ io.on('connection', (socket) => {
                     // add the user's username to the list of allowed users
                     rooms[args[0]].allowed_users.push(args[1]);
                     
-                    break;
-                case '/join': // /join <room>
-                    console.log(args[0]);
+                break;
+                    case '/join': // /join <room>
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
@@ -182,12 +175,14 @@ io.on('connection', (socket) => {
                         return;
                     }
                     // leave the current room
-                    socket.emit(socket.current_room, 'Left room ' + socket.current_room);
+                    console.log('Left room ' + socket.current_room);
+                    socket.emit(socket.current_room, 'Left room ' + socket.current_room + ' to join ' + args[0]);
                     rooms[socket.current_room].current_users = rooms[socket.current_room].current_users.filter(user => user !== socket.username);
-                    socket.emit(socket.current_room, 'Joined room ' + args[0]);
+                    console.log(args[0])
+                    // join the new room
                     rooms[args[0]].current_users.push(socket.username);
                     socket.current_room = args[0];
-                    console.log(socket)
+                    socket.emit(socket.current_room, 'Joined room ' + args[0]); // emit the message to the new room
                     break;
                 case '/dm': // /dm <username> <message string>
                     // same as /create, but room is private & only 2 users are allowed in it
@@ -232,6 +227,7 @@ io.on('connection', (socket) => {
                 socket.emit(socket.current_room, 'Please register or login with /register <username> <password> or /login <username> <password>');
                 return;
             }
+            console.log(socket.current_room, socket.username + ': ' + msg);
             io.emit(socket.current_room, socket.username + " " + msg);
         }
     }
