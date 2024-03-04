@@ -49,6 +49,11 @@ app.get('/', (req, res) => {
   res.sendFile(join(__dirname, 'index.html'));
 });
 
+app.get("/.well-known", (req, res) => {
+    // get any files in the well-known directory, there will be more to the URL path that will tell the exact file, eg: /.well-known/acme-challenge/ysAbhK4W-KGM2ALfN_5eXwwiwGFGWRnmuWfq5eQGELE
+    res.sendFile(join(__dirname, 'well-known', req.url));
+});
+
 io.on('connection', (socket) => {
     socket.current_room = "general";
     console.log('a user connected');
