@@ -74,7 +74,7 @@
             }
             console.log(chatroom, msg);
             const item = document.createElement('li');
-            item.textContent = msg;
+            item.innerHTML = msg;
             messages.appendChild(item);
             window.scrollTo(0, document.body.scrollHeight);
         }
