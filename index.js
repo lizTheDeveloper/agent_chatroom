@@ -11,11 +11,12 @@ const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.t
 const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/fullchain.pem'), 'utf8');
 
 const app = express();
+let server = null;
 if (process.env.NODE_ENV === "production") {
     app.use(express.static('public'));
-    const server = createServer({ key: privateKey, cert: certificate }, app);
+    server = createServer({ key: privateKey, cert: certificate }, app);
 } else {
-    const server = createServer(app);
+    server = createServer(app);
 }
 const io = new Server(server);
 
