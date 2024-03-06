@@ -1,11 +1,22 @@
 const express = require('express');
-const { createServer } = require('node:http');
+const { createServer } = require('https');
+const httpServer = require('http').createServer();
 const { join } = require('node:path');
 const { Server } = require('socket.io');
 const fs = require('fs');
+const { readFileSync } = require('fs');
+const { resolve } = require('path');
+
+const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/yourdomain.com/privkey.pem'), 'utf8');
+const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/yourdomain.com/fullchain.pem'), 'utf8');
 
 const app = express();
-const server = createServer(app);
+if (process.env.NODE_ENV === "production") {
+    app.use(express.static('public'));
+    const server = createServer({ key: privateKey, cert: certificate }, app);
+} else {
+    const server = createServer(app);
+}
 const io = new Server(server);
 
 let users = {}; //not a real backend, just for testing
