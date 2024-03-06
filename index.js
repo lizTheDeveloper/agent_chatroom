@@ -49,6 +49,11 @@ app.get('/', (req, res) => {
   res.sendFile(join(__dirname, 'index.html'));
 });
 
+app.get("/.well-known", (req, res) => {
+    // get any files in the well-known directory, there will be more to the URL path that will tell the exact file, eg: /.well-known/acme-challenge/ysAbhK4W-KGM2ALfN_5eXwwiwGFGWRnmuWfq5eQGELE
+    res.sendFile(join(__dirname, 'well-known', req.url));
+});
+
 io.on('connection', (socket) => {
     socket.current_room = "general";
     console.log('a user connected');
@@ -228,6 +233,14 @@ io.on('connection', (socket) => {
                 return;
             }
             console.log(socket.current_room, socket.username + ': ' + msg);
+            rooms[socket.current_room].messages.push(socket.username + ': ' + msg);
+            fs.writeFile('rooms.json', JSON.stringify(rooms), (err) => {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                console.log('rooms.json updated');
+            });
             io.emit(socket.current_room, socket.username + " " + msg);
         }
     }
