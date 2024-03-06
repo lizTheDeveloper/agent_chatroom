@@ -7,8 +7,8 @@ const fs = require('fs');
 const { readFileSync } = require('fs');
 const { resolve } = require('path');
 
-const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/yourdomain.com/privkey.pem'), 'utf8');
-const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/yourdomain.com/fullchain.pem'), 'utf8');
+const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/privkey.pem'), 'utf8');
+const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/fullchain.pem'), 'utf8');
 
 const app = express();
 if (process.env.NODE_ENV === "production") {
