@@ -52,19 +52,19 @@ ScrumSwarm:
 - ScrumAgent: Helps you in Scrum, listens to your goals and follows up at EOD
     - Could connect to github projects
     - Prods you to do the next thing / update github or does that for you
-- Github Projects Updater - updates your github projects for you
-- Github Projects Reporter - reports on the current status of your github projects
+- [ ] Github Projects Updater - updates your github projects for you
+- [ ] Github Projects Reporter - reports on the current status of your github projects
 - Multiverse Scrum Summarizer - writes a daily update that summarizes the process we've been making each day as a group, publishes it to the website
 - Multiverse Project Reporter - shows progress you've made on your project attached to the project itself on the website
-- TaskBot - given a list of tasks, actually creates the tasks in your favorite task manager
-- TaskAssigner - given a list of tasks, chooses people who might have the skills for it
+- [x] TaskBot - given a list of tasks, actually creates the tasks in your favorite task manage
+- [ ] TaskAssigner - given a list of tasks, chooses people who might have the skills for it
 - CapacityEstimator - given a list of people, checks their list of ToDos and estimates what capacity they might have from the RACI (Responsible, Accountable, Consulted, Informed) roles
 - ComplexityCategorizer - given a Github Issue, categorizes the task by Order of Hierarchical Complexity (and suggests collaborator or breaking down the task)
 
 
 
 ADHDSwarm:
-- ADHD coach Agent: Asks you socratic questions with an ADHD coaching framework
+- [ ] ADHD coach Agent: Asks you socratic questions with an ADHD coaching framework
 - TaskMaster Agent: Somehow keeps you on task
     - Share screen? 
     - Maybe connect with RescueTime
@@ -85,6 +85,6 @@ MomBot:
 
 CommunityBots:
 - LinkDump Categorizer - takes a link, throws it into a category, keeps a multiverse-link hoard
-- ChannelSummary - Summarizes a channel by day, week, or month, or since a given time period
-- Multiverse Points Currency Bot - gives you MultiverseRewards for use... somehow... for undefined reasons
+- [x] ChannelSummary - Summarizes a channel by day, week, or month, or since a given time period
+- [ ] Multiverse Points Currency Bot - gives you MultiverseRewards for use... somehow... for undefined reasons
 - Multiverse Calendar Agent that knows where things are, broadcasts events that are starting in the main chat, etc (maybe hook up to GatherTown instead)
