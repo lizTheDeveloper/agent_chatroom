@@ -23,6 +23,10 @@ class Agent {
         this.socket.emit(this.chatroom, "/login " + this.agentName + " " + this.password);
     }
 
+    register() {
+        this.socket.emit(this.chatroom, "/register " + this.agentName + " " + this.password);
+    }
+
     registerMessageHandler(channel, handler) {
         this.socket.on(channel, handler.bind(this));
     }
