@@ -18,13 +18,15 @@ class Agent {
     }
 
     connect() {
-
         this.socket = io(this.socketUrl);
-        this.socket.emit(this.chatroom, "/login " + this.agentName + " " + this.password);
+        
     }
 
     register() {
         this.socket.emit(this.chatroom, "/register " + this.agentName + " " + this.password);
+    }
+    login() {
+        this.socket.emit(this.chatroom, "/login " + this.agentName + " " + this.password);
     }
 
     registerMessageHandler(channel, handler) {

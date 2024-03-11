@@ -2,6 +2,7 @@ let { Agent } = require('./agents/AddressableAgent.js');
 
 let agent = new Agent("agentchatbot", "hi");
 agent.connect();
+agent.login();
 
 
 agent.registerMessageHandler("general", function (msg) {
