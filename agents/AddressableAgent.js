@@ -43,7 +43,7 @@ class Agent {
     }
 
     sendMessage(channel, message) {
-        this.socket.emit(channel, this.agentName + ": " + message);
+        this.socket.emit(channel, message);
     }
 }
 
