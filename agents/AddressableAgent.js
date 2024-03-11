@@ -1,6 +1,9 @@
 const { io } = require("socket.io-client");
 const { OpenAI } = require("openai");
 
+
+console.log("AddressableAgent.js")
+
 class Agent {
     constructor(agentName, password, chatroom="general", socketUrl="https://chat.themultiverse.school:3535") {
         this.agentName = agentName;
@@ -15,6 +18,7 @@ class Agent {
     }
 
     connect() {
+
         this.socket = io(this.socketUrl);
         this.socket.emit(this.chatroom, "/login " + this.agentName + " " + this.password);
     }

@@ -4,8 +4,8 @@ let agent = new Agent("agentchatbot", "hi");
 agent.connect();
 
 
-agent.registerMessageHandler("general", (msg) => {
-    console.log(msg, msg.includes("@" + this.agentName));
+agent.registerMessageHandler("general", function (msg) {
+
     if (msg.startsWith("agentchatbot")) return;
     if (msg.includes("@" + this.agentName)) {
         console.log(msg)
