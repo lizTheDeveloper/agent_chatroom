@@ -6,59 +6,54 @@ const { Server } = require('socket.io');
 const fs = require('fs');
 const { readFileSync } = require('fs');
 const { resolve } = require('path');
+const admin = require('firebase-admin');
 
-const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/privkey.pem'), 'utf8');
-const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/fullchain.pem'), 'utf8');
+// Initialize the Firebase app
+admin.initializeApp({
+    credential: admin.credential.applicationDefault()
+});
+
+const db = admin.firestore();
+let users,rooms;
+
 
 const app = express();
 let server = null;
+console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === "production") {
     app.use(express.static('public'));
+
+    const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/privkey.pem'), 'utf8');
+    const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/fullchain.pem'), 'utf8');
+
     server = createServer({ key: privateKey, cert: certificate }, app);
 } else {
     server = createServer(app);
 }
 const io = new Server(server);
 
-let users = {}; //not a real backend, just for testing
+async function loadUsers() {
+    let users = {};
+    const snapshot = await db.collection('users').get();
+    snapshot.forEach((doc) => {
+        users[doc.id] = doc.data();
+    });
+    return users;
+}
 
-let rooms = {
-    "general": {
-        "name": "general",
-        "public": "true", // "true" or "false
-        "allowed_users": [],
-        "current_users": [],
-        "messages": []
-    }
-}; //not a real backend, just for testing
+async function loadRooms() {
+    let rooms = {};
+    const snapshot = await db.collection('rooms').get();
+    snapshot.forEach((doc) => {
+        rooms[doc.id] = doc.data();
+    });
+    return rooms;
+}
 
-// read from the users.json file
-fs.readFile('users.json', 'utf8', (err, data) => {
-    if (err) {
-        console.error(err);
-        return;
-    }
-    users = JSON.parse(data);
-    // ensure users have a password property in case they just have a string value
-    for (let user in users) {
-        if (typeof users[user] === "string") {
-            users[user] = {
-                "password": users[user]
-            };
-        }
-    }
-});
 
-fs.readFile('rooms.json', 'utf8', (err, data) => {
-    if (err) {
-        console.error(err);
-        return;
-    }
-    rooms = JSON.parse(data);
-});
 
 app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'index.html'));
+    res.sendFile(join(__dirname, 'index.html'));
 });
 
 app.get("/.well-known", (req, res) => {
@@ -79,7 +74,7 @@ io.on('connection', (socket) => {
         socket.on(room, handleChatMessage);
     }
 
-    function handleChatMessage (msg) {
+    function handleChatMessage(msg) {
         console.log(socket.current_room + ' message: ' + msg);
 
         // handle slash commands
@@ -94,7 +89,8 @@ io.on('connection', (socket) => {
                     } else {
                         socket.emit(socket.current_room, 'Registered');
                         users[args[0]] = {
-                            "password": args[1]
+                            "password": args[1],
+                            "username": args[0],
                         };
                         rooms.general.allowed_users.push(args[0]);
                     }
@@ -102,17 +98,13 @@ io.on('connection', (socket) => {
                     let usersCopy = {};
                     for (let user in users) {
                         usersCopy[user] = {
-                            "password": users[user]["password"]
+                            "password": users[user]["password"],
+                            "username": users[user]["username"]
                         }
                     }
-                    // save the user to the users.json file
-                    fs.writeFile('users.json', JSON.stringify(usersCopy), (err) => {
-                        if (err) {
-                            console.error(err);
-                            return;
-                        }
-                        console.log('users.json updated');
-                    });
+                    // save the user to the users collection
+                    db.collection('users').doc(args[0]).set(usersCopy[args[0]]);
+
                     break;
                 case '/login':
                     // check to see if the user has only a string value for the password
@@ -143,6 +135,7 @@ io.on('connection', (socket) => {
                             "current_users": [],
                             "messages": []
                         };
+                        db.collection('rooms').doc(args[0]).set(rooms[args[0]]);
                         socket.on(args[0], handleChatMessage);
                         socket.emit(socket.current_room, 'Room created: ' + args[0]);
                     }
@@ -156,11 +149,14 @@ io.on('connection', (socket) => {
                     break;
 
                 case '/invite': // /invite <room> <user>
+                    // get the inviting user
+                    let invitingUser = socket.username;
 
+                    // check if the room exists
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
-                    }                   
+                    }
                     // check if the user to be invited exists
                     if (!users[args[1]]) {
                         socket.emit(socket.current_room, args[1] + ' does not exist');
@@ -176,13 +172,20 @@ io.on('connection', (socket) => {
                         socket.emit(socket.current_room, args[1] + ' is already in the room');
                         return;
                     }
+
+                    // find the user's socket
+                    let userSocket = users[args[1]]["socket"];
+                    if (!userSocket) {
+                        socket.emit(socket.current_room, args[1] + ' is not online');
+                        return;
+                    }
                     // send the invite
-                    socket.emit(args[1], 'You have been invited to join ' + args[0]);
+                    userSocket.emit("server", invitingUser + ' invited you to the channel: ' + args[0]);
                     // add the user's username to the list of allowed users
                     rooms[args[0]].allowed_users.push(args[1]);
-                    
-                break;
-                    case '/join': // /join <room>
+
+                    break;
+                case '/join': // /join <room>
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
@@ -201,9 +204,10 @@ io.on('connection', (socket) => {
                     socket.current_room = args[0];
                     socket.emit(socket.current_room, 'Joined room ' + args[0]); // emit the message to the new room
                     break;
+
                 case '/dm': // /dm <username> <message string>
                     // same as /create, but room is private & only 2 users are allowed in it
-                    
+
                     // build room name
                     let recipientUsername = args[0];
                     let dmRoomName = socket.username + '_' + recipientUsername;
@@ -258,6 +262,23 @@ io.on('connection', (socket) => {
     }
 });
 
-server.listen(3535, () => {
-  console.log('server running at http://localhost:3535/');
-});
+
+async function listAllDocuments(collection) {
+    const snapshot = await db.collection(collection).get();
+    snapshot.forEach((doc) => {
+        console.log(doc.id, '=>', doc.data());
+    });
+}
+listAllDocuments('rooms');
+
+
+// async function startServer(server) {
+//     let users = await loadUsers();
+//     let rooms = await loadRooms();
+//     server.listen(3535, () => {
+//         console.log('server running at http://localhost:3535/');
+//     });
+//     return server;
+// }
+
+// startServer(server);

@@ -52,3 +52,13 @@ steps:
 ## Log into the server
 
 gcloud compute ssh --zone "us-west1-a" "websocket-instance" --project "technomancyschool-394117"
+
+
+
+## firebase deploy
+
+gcloud iam service-accounts create mvc-firebase-service-account --display-name "firebaseadmin"
+
+
+gcloud projects add-iam-policy-binding technomancyschool --member "serviceAccount:mvc-firebase-service-account@technomancyschool.iam.gserviceaccount.com" --role "roles/firestore.viewer"
+gcloud projects add-iam-policy-binding technomancyschool --member "serviceAccount:mvc-firebase-service-account@technomancyschool.iam.gserviceaccount.com" --role "roles/firestore.editor"

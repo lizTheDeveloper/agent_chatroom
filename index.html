@@ -79,6 +79,7 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
         socket.on(chatroom, handleMessage);
+        socket.on('server', handleMessage);
 
         //on disconnect
         socket.on('disconnect', () => {
