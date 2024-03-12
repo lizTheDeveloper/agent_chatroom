@@ -114,7 +114,7 @@ io.on('connection', (socket) => {
                         };
                     }
                     // check the password
-                    if (users[args[0]]["password"] === args[1]) {
+                    if (users[args[0]] && users[args[0]]["password"] === args[1]) {
                         socket.emit(socket.current_room, 'Logged in');
                         socket.username = args[0];
                         users[args[0]]["socket"] = socket;
