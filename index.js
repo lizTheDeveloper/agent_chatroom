@@ -1,6 +1,6 @@
 const express = require('express');
 const { createServer } = require('https');
-const httpServer = require('http').createServer();
+const httpServer = require('http').createServer;
 const { join } = require('node:path');
 const { Server } = require('socket.io');
 const fs = require('fs');
@@ -18,6 +18,7 @@ admin.initializeApp({
 const db = admin.firestore();
 let users,rooms;
 
+
 console.log(__dirname);
 const app = express();
 let server = null;
@@ -31,7 +32,7 @@ if (process.env.NODE_ENV === "production") {
 
     server = createServer({ key: privateKey, cert: certificate }, app);
 } else {
-    server = createServer(app);
+    server = httpServer(app);
 }
 
 app.get('/', (req, res) => {
@@ -58,9 +59,6 @@ async function loadRooms() {
     });
     return rooms;
 }
-
-
-
 
 
 app.get("/.well-known", (req, res) => {
@@ -257,13 +255,6 @@ io.on('connection', (socket) => {
             }
             console.log(socket.current_room, socket.username + ': ' + msg);
             rooms[socket.current_room].messages.push(socket.username + ': ' + msg);
-            fs.writeFile('rooms.json', JSON.stringify(rooms), (err) => {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
-                console.log('rooms.json updated');
-            });
             io.emit(socket.current_room, socket.username + " " + msg);
         }
     }
@@ -288,3 +279,35 @@ getUsersAndRooms();
 server.listen(3535, () => {
     console.log('server running at http://localhost:3535/');
 });
+
+async function updateUsersAndRooms() {
+    // save the users to the users collection
+    for (let user in users) {
+        let serializeableUser = {
+            "password": users[user]["password"],
+            "username": users[user]["username"]
+        }
+        if (users[user]) {
+            db.collection('users').doc(user).set(serializeableUser);
+        } else {
+            console.log(serializeableUser, "is not a user")
+        }
+    }
+    // save the rooms to the rooms collection
+    for (let room in rooms) {
+        let serializeableRoom = {
+            "name": rooms[room]["name"],
+            "public": rooms[room]["public"],
+            "allowed_users": rooms[room]["allowed_users"],
+            "current_users": rooms[room]["current_users"],
+            "messages": rooms[room]["messages"]
+        }
+
+        db.collection('rooms').doc(serializeableRoom["name"]).set(serializeableRoom);
+    }
+}
+
+let dbUpdateCadence = 5 * 60 * 1000;
+
+// every 5 minutes, update the users and rooms in the database
+setInterval(updateUsersAndRooms, dbUpdateCadence); // 5 minutes
