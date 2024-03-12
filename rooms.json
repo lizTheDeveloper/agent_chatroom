@@ -1,0 +1,37 @@
+{
+    "general": {
+        "name": "general",
+        "public": "true",
+        "allowed_users": [
+            "summaryagent"
+        ],
+        "current_users": [],
+        "messages": [
+        ]
+    },
+    "room1": {
+        "name": "room1",
+        "allowed_users": [],
+        "current_users": [],
+        "messages": []
+    },
+    "room2": {
+        "name": "room2",
+        "public": "public",
+        "allowed_users": [],
+        "current_users": [],
+        "messages": []
+    },
+    "room3": {
+        "name": "room3",
+        "public": "public",
+        "allowed_users": [],
+        "current_users": [
+            "summaryagent",
+            "summaryagent",
+            "liz"
+        ],
+        "messages": [
+        ]
+    }
+}
