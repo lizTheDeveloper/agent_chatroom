@@ -8,6 +8,8 @@ const { readFileSync } = require('fs');
 const { resolve } = require('path');
 const admin = require('firebase-admin');
 
+const path = require('path');
+
 // Initialize the Firebase app
 admin.initializeApp({
     credential: admin.credential.applicationDefault()
@@ -16,12 +18,13 @@ admin.initializeApp({
 const db = admin.firestore();
 let users,rooms;
 
-
+console.log(__dirname);
 const app = express();
 let server = null;
 console.log(process.env.NODE_ENV);
+
+app.use(express.static(path.join(__dirname, 'public')));
 if (process.env.NODE_ENV === "production") {
-    app.use(express.static('public'));
 
     const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/privkey.pem'), 'utf8');
     const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/fullchain.pem'), 'utf8');
@@ -30,6 +33,12 @@ if (process.env.NODE_ENV === "production") {
 } else {
     server = createServer(app);
 }
+
+app.get('/', (req, res) => {
+    console.log('sending index.html')
+    res.sendFile(join(__dirname, 'index.html'));
+});
+
 const io = new Server(server);
 
 async function loadUsers() {
@@ -52,9 +61,7 @@ async function loadRooms() {
 
 
 
-app.get('/', (req, res) => {
-    res.sendFile(join(__dirname, 'index.html'));
-});
+
 
 app.get("/.well-known", (req, res) => {
     // get any files in the well-known directory, there will be more to the URL path that will tell the exact file, eg: /.well-known/acme-challenge/ysAbhK4W-KGM2ALfN_5eXwwiwGFGWRnmuWfq5eQGELE
@@ -271,14 +278,13 @@ async function listAllDocuments(collection) {
 }
 listAllDocuments('users');
 
-
-async function startServer(server) {
-    let users = await loadUsers();
-    let rooms = await loadRooms();
-    server.listen(3535, () => {
-        console.log('server running at http://localhost:3535/');
-    });
-    return server;
+async function getUsersAndRooms() {
+    users = await loadUsers();
+    rooms = await loadRooms();
 }
 
-startServer(server);
+getUsersAndRooms();
+
+server.listen(3535, () => {
+    console.log('server running at http://localhost:3535/');
+});
