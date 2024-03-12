@@ -269,16 +269,16 @@ async function listAllDocuments(collection) {
         console.log(doc.id, '=>', doc.data());
     });
 }
-listAllDocuments('rooms');
+listAllDocuments('users');
 
 
-// async function startServer(server) {
-//     let users = await loadUsers();
-//     let rooms = await loadRooms();
-//     server.listen(3535, () => {
-//         console.log('server running at http://localhost:3535/');
-//     });
-//     return server;
-// }
+async function startServer(server) {
+    let users = await loadUsers();
+    let rooms = await loadRooms();
+    server.listen(3535, () => {
+        console.log('server running at http://localhost:3535/');
+    });
+    return server;
+}
 
-// startServer(server);
+startServer(server);
