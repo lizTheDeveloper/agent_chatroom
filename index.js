@@ -1,52 +1,69 @@
 const express = require('express');
-const { createServer } = require('node:http');
+const { createServer } = require('https');
+const httpServer = require('http').createServer;
 const { join } = require('node:path');
 const { Server } = require('socket.io');
 const fs = require('fs');
+const { readFileSync } = require('fs');
+const { resolve } = require('path');
+const admin = require('firebase-admin');
 
+const path = require('path');
+
+// Initialize the Firebase app
+admin.initializeApp({
+    credential: admin.credential.applicationDefault()
+});
+
+const db = admin.firestore();
+let users,rooms;
+
+
+console.log(__dirname);
 const app = express();
-const server = createServer(app);
-const io = new Server(server);
+let server = null;
+console.log(process.env.NODE_ENV);
 
-let users = {}; //not a real backend, just for testing
+app.use(express.static(path.join(__dirname, 'public')));
+if (process.env.NODE_ENV === "production") {
 
-let rooms = {
-    "general": {
-        "name": "general",
-        "public": "true", // "true" or "false
-        "allowed_users": [],
-        "current_users": [],
-        "messages": []
-    }
-}; //not a real backend, just for testing
+    const privateKey = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/privkey.pem'), 'utf8');
+    const certificate = readFileSync(resolve(__dirname, '/etc/letsencrypt/live/chat.themultiverse.school/fullchain.pem'), 'utf8');
 
-// read from the users.json file
-fs.readFile('users.json', 'utf8', (err, data) => {
-    if (err) {
-        console.error(err);
-        return;
-    }
-    users = JSON.parse(data);
-    // ensure users have a password property in case they just have a string value
-    for (let user in users) {
-        if (typeof users[user] === "string") {
-            users[user] = {
-                "password": users[user]
-            };
-        }
-    }
-});
-
-fs.readFile('rooms.json', 'utf8', (err, data) => {
-    if (err) {
-        console.error(err);
-        return;
-    }
-    rooms = JSON.parse(data);
-});
+    server = createServer({ key: privateKey, cert: certificate }, app);
+} else {
+    server = httpServer(app);
+}
 
 app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'index.html'));
+    console.log('sending index.html')
+    res.sendFile(join(__dirname, 'index.html'));
+});
+
+const io = new Server(server);
+
+async function loadUsers() {
+    let users = {};
+    const snapshot = await db.collection('users').get();
+    snapshot.forEach((doc) => {
+        users[doc.id] = doc.data();
+    });
+    return users;
+}
+
+async function loadRooms() {
+    let rooms = {};
+    const snapshot = await db.collection('rooms').get();
+    snapshot.forEach((doc) => {
+        rooms[doc.id] = doc.data();
+    });
+    return rooms;
+}
+
+
+app.get("/.well-known", (req, res) => {
+    // get any files in the well-known directory, there will be more to the URL path that will tell the exact file, eg: /.well-known/acme-challenge/ysAbhK4W-KGM2ALfN_5eXwwiwGFGWRnmuWfq5eQGELE
+    res.sendFile(join(__dirname, 'well-known', req.url));
 });
 
 io.on('connection', (socket) => {
@@ -62,7 +79,7 @@ io.on('connection', (socket) => {
         socket.on(room, handleChatMessage);
     }
 
-    function handleChatMessage (msg) {
+    function handleChatMessage(msg) {
         console.log(socket.current_room + ' message: ' + msg);
 
         // handle slash commands
@@ -77,7 +94,8 @@ io.on('connection', (socket) => {
                     } else {
                         socket.emit(socket.current_room, 'Registered');
                         users[args[0]] = {
-                            "password": args[1]
+                            "password": args[1],
+                            "username": args[0],
                         };
                         rooms.general.allowed_users.push(args[0]);
                     }
@@ -85,17 +103,13 @@ io.on('connection', (socket) => {
                     let usersCopy = {};
                     for (let user in users) {
                         usersCopy[user] = {
-                            "password": users[user]["password"]
+                            "password": users[user]["password"],
+                            "username": users[user]["username"]
                         }
                     }
-                    // save the user to the users.json file
-                    fs.writeFile('users.json', JSON.stringify(usersCopy), (err) => {
-                        if (err) {
-                            console.error(err);
-                            return;
-                        }
-                        console.log('users.json updated');
-                    });
+                    // save the user to the users collection
+                    db.collection('users').doc(args[0]).set(usersCopy[args[0]]);
+
                     break;
                 case '/login':
                     // check to see if the user has only a string value for the password
@@ -126,6 +140,7 @@ io.on('connection', (socket) => {
                             "current_users": [],
                             "messages": []
                         };
+                        db.collection('rooms').doc(args[0]).set(rooms[args[0]]);
                         socket.on(args[0], handleChatMessage);
                         socket.emit(socket.current_room, 'Room created: ' + args[0]);
                     }
@@ -139,11 +154,14 @@ io.on('connection', (socket) => {
                     break;
 
                 case '/invite': // /invite <room> <user>
+                    // get the inviting user
+                    let invitingUser = socket.username;
 
+                    // check if the room exists
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
-                    }                   
+                    }
                     // check if the user to be invited exists
                     if (!users[args[1]]) {
                         socket.emit(socket.current_room, args[1] + ' does not exist');
@@ -159,13 +177,20 @@ io.on('connection', (socket) => {
                         socket.emit(socket.current_room, args[1] + ' is already in the room');
                         return;
                     }
+
+                    // find the user's socket
+                    let userSocket = users[args[1]]["socket"];
+                    if (!userSocket) {
+                        socket.emit(socket.current_room, args[1] + ' is not online');
+                        return;
+                    }
                     // send the invite
-                    socket.emit(args[1], 'You have been invited to join ' + args[0]);
+                    userSocket.emit("server", invitingUser + ' invited you to the channel: ' + args[0]);
                     // add the user's username to the list of allowed users
                     rooms[args[0]].allowed_users.push(args[1]);
-                    
-                break;
-                    case '/join': // /join <room>
+
+                    break;
+                case '/join': // /join <room>
                     if (!rooms[args[0]]) {
                         socket.emit(socket.current_room, 'Room does not exist');
                         return;
@@ -184,9 +209,10 @@ io.on('connection', (socket) => {
                     socket.current_room = args[0];
                     socket.emit(socket.current_room, 'Joined room ' + args[0]); // emit the message to the new room
                     break;
+
                 case '/dm': // /dm <username> <message string>
                     // same as /create, but room is private & only 2 users are allowed in it
-                    
+
                     // build room name
                     let recipientUsername = args[0];
                     let dmRoomName = socket.username + '_' + recipientUsername;
@@ -228,11 +254,60 @@ io.on('connection', (socket) => {
                 return;
             }
             console.log(socket.current_room, socket.username + ': ' + msg);
+            rooms[socket.current_room].messages.push(socket.username + ': ' + msg);
             io.emit(socket.current_room, socket.username + " " + msg);
         }
     }
 });
 
+
+async function listAllDocuments(collection) {
+    const snapshot = await db.collection(collection).get();
+    snapshot.forEach((doc) => {
+        console.log(doc.id, '=>', doc.data());
+    });
+}
+listAllDocuments('users');
+
+async function getUsersAndRooms() {
+    users = await loadUsers();
+    rooms = await loadRooms();
+}
+
+getUsersAndRooms();
+
 server.listen(3535, () => {
-  console.log('server running at http://localhost:3535');
+    console.log('server running at http://localhost:3535/');
 });
+
+async function updateUsersAndRooms() {
+    // save the users to the users collection
+    for (let user in users) {
+        let serializeableUser = {
+            "password": users[user]["password"],
+            "username": users[user]["username"]
+        }
+        if (users[user]) {
+            db.collection('users').doc(user).set(serializeableUser);
+        } else {
+            console.log(serializeableUser, "is not a user")
+        }
+    }
+    // save the rooms to the rooms collection
+    for (let room in rooms) {
+        let serializeableRoom = {
+            "name": rooms[room]["name"],
+            "public": rooms[room]["public"],
+            "allowed_users": rooms[room]["allowed_users"],
+            "current_users": rooms[room]["current_users"],
+            "messages": rooms[room]["messages"]
+        }
+
+        db.collection('rooms').doc(serializeableRoom["name"]).set(serializeableRoom);
+    }
+}
+
+let dbUpdateCadence = 5 * 60 * 1000;
+
+// every 5 minutes, update the users and rooms in the database
+setInterval(updateUsersAndRooms, dbUpdateCadence); // 5 minutes

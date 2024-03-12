@@ -36,6 +36,7 @@
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             if (input.value) {
+                console.log('input.value', input.value);
                 // check to see if we typed /login. If so, save the credentials here.
                 if (input.value.startsWith('/login')) {
                     credentials = {
@@ -79,6 +80,7 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
         socket.on(chatroom, handleMessage);
+        socket.on('server', handleMessage);
 
         //on disconnect
         socket.on('disconnect', () => {
