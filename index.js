@@ -10,9 +10,10 @@ const admin = require('firebase-admin');
 
 const path = require('path');
 
+const serviceAccount = require('./firebase_credentials.json');
 // Initialize the Firebase app
 admin.initializeApp({
-    credential: admin.credential.applicationDefault()
+    credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
@@ -34,6 +35,9 @@ if (process.env.NODE_ENV === "production") {
 } else {
     server = httpServer(app);
 }
+
+
+
 
 app.get('/', (req, res) => {
     console.log('sending index.html')
