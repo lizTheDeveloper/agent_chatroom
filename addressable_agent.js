@@ -6,7 +6,7 @@ const { OpenAI } = require("openai");
 
 
 // generate a random agent name
-const agentName = "agentchatbot"
+const agentName = "LinkDragonAgent"
 const password = "hi";
 
 const openai = new OpenAI({
@@ -22,7 +22,7 @@ async function prompt(message) {
     return chatCompletion.choices[0].message.content;
 }
 
-const socket = io("https://2d16-2601-1c2-100-ded-ec92-1715-35a0-a586.ngrok-free.app/");
+const socket = io("http://127.0.0.1:3535");
 let chatroom = "general";
 
 socket.on(chatroom, (msg) => {
