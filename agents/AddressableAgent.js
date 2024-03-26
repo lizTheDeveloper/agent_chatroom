@@ -5,7 +5,7 @@ const { OpenAI } = require("openai");
 console.log("AddressableAgent.js")
 
 class Agent {
-    constructor(agentName, password, chatroom="general", socketUrl="http://127.0.0.1:3535") {
+    constructor(agentName, password, chatroom="general", socketUrl="https://chat.themultiverse.school:3535/") {
         this.agentName = agentName;
         this.password = password;
         this.chatroom = chatroom;

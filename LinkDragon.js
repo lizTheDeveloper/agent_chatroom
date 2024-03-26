@@ -1,5 +1,3 @@
-
-const fs = require('fs');
 let { Agent } = require('./agents/AddressableAgent.js');
 
 const subprocess = require('child_process');
@@ -8,7 +6,8 @@ let agent = new Agent("LinkDragonAgent", "hi");
 agent.connect();
 agent.login();
 
-const linkCastleFile = 'linkCastle.json';
+//Link for Neon Database
+const linkCastleFile = 'postgresql://LinkDragon_owner:gV0OjmR1CxtT@ep-delicate-bread-a4qtryy4.us-east-1.aws.neon.tech/LinkDragon?sslmode=require';
 
 function readLinkFile() {
     try {
@@ -32,6 +31,9 @@ function storeLink(link, user) {
     if (!data[user]) data[user] = [];
     data[user].push(link);
     writeLinkFile(data);
+    // Send message to "LinkDragonData" channel
+    agent.sendMessage("LinkDragonData", `Link stored from ${user}: ${link}`);
+}
 }
 
 agent.registerMessageHandler("general", function (msg) {
