@@ -54,4 +54,4 @@ setInterval(() => {
     prompt('Generate a self-care reminder to remind the chaos monsters of the multiverse to stretch, drink water, eat and take their meds. Formulate the reminder with content relevant to the general time of day. Include a joke and/or pun relating to the message, watahboi and chaos monsters.').then((response) => {
         socket.emit(chatroom, ": " + response);
     });
-}, 300000);
+}, 300000); // 30000ms = 30 seconds, 60000ms = 1 minute, 300000ms = 5 minutes,  3600000ms = 1 hour,
