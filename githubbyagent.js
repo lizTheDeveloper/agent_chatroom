@@ -1,102 +1,79 @@
-let { Agent } = require('./agents/AddressableAgent.js');
-
 const subprocess = require('child_process');
+const { Agent } = require('./agents/AddressableAgent.js');
+const OpenAI = require('openai');
+require('dotenv').config();
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
 
 let agent = new Agent("githubby", "hi");
 agent.connect();
 agent.login();
 
-let allowedUsers = ['liz', 'r', 'gene']
+let allowedUsers = ['liz', 'r', 'gene'];
 
-agent.registerMessageHandler("general", function (msg) {
-    // if the message comes from an allowed user
+// Modified to use agent.sendMessage method for sending message back to the chatroom
+function sendMessageToChat(message) {
+    console.log(`Message to chat: ${message}`);
+    agent.sendMessage("general", message); // Assuming "general" is the chatroom name
+}
+
+agent.registerMessageHandler("general", async function (msg) {
     console.log(msg);
-    if (allowedUsers.includes(msg.split(" ")[0])) {
-        console.log("message from allowed user")
-        // parse the message for the github projects command
-        if (msg.includes("github projects")) {
-            console.log("logging projects")
-            // use subprocess to run the command using the gh projects cli
-            subprocess.exec('gh project list', (err, stdout, stderr) => {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
-                // send the output to the chatroom
-                agent.sendMessage("general", stdout);
-                agent.prompt(stdout + " " + msg).then((response) => {
-                    agent.sendMessage("general", response);
-                });
+    // Check if the message mentions @githubby
+    if (!msg.includes("@githubby")) {
+        console.log("Message does not mention @githubby, ignoring.");
+        return; // Ignore messages not addressing @githubby
+    }
+
+    // Extract username from the message
+    const username = msg.split(" ")[0];
+    
+    if (allowedUsers.includes(username)) {
+        console.log("Message from allowed user mentioning @githubby");
+
+        try {
+            // Adjust the prompt as necessary
+            const prompt = `Translate this user request into a GitHub CLI command: "${msg.replace("@githubby", "").trim()}"`;
+            const chatCompletion = await openai.chat.completions.create({
+                model: "gpt-4",
+                messages: [{"role": "system", "content": prompt},
+                           {"role": "user", "content": msg}],
             });
-        }
-        if (msg.includes("github repos")) {
-            const parts = msg.split(" "); // Assuming the format "username github repos"
-            if (parts.length >= 3) {
-                const owner = parts[3]; // The third part should be the username/organization
-                console.log(`Listing repositories for ${owner}`);
-                subprocess.exec(`gh repo list ${owner} --limit 30`, (err, stdout, stderr) => {
-                    if (err) {
-                        console.error(`Error: ${err}`);
+
+            const fullResponse = chatCompletion.choices[0].message.content.trim();
+            console.log(`Full AI Response: ${fullResponse}`);
+
+            const ghCommandMatch = fullResponse.match(/^gh .+$/m); 
+
+            if (ghCommandMatch) {
+                const ghCommand = ghCommandMatch[0];
+                console.log(`Extracted GH Command: ${ghCommand}`);
+                
+                subprocess.exec(ghCommand, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`exec error: ${error}`);
+                        sendMessageToChat(`Error executing command: ${error.message}`);
                         return;
                     }
-                    agent.sendMessage("general", stdout);
-                    agent.prompt(stdout + " " + msg).then((response) => {
-                        agent.sendMessage("general", response);
-                    });
+                    console.log(`stdout: ${stdout}`);
+                    console.error(`stderr: ${stderr}`);
+
+                    // Assuming stdout has the command output you want to share
+                    sendMessageToChat(`@${username}, here's the output:\n${stdout}`);
+                    if (stderr) sendMessageToChat(`Command Errors:\n${stderr}`);
                 });
             } else {
-                agent.sendMessage("general", "Please specify a GitHub username or organization after 'github repos'.");
+                console.log("No GH command found in AI response.");
+                sendMessageToChat(`@${username}, I couldn't interpret that request.`);
             }
+        } catch (error) {
+            console.error("Error calling OpenAI:", error);
+            sendMessageToChat(`@${username}, I encountered an error processing your request.`);
         }
-
-        // Add an if statement for viewing issues
-        if (msg.includes("github issues")) {
-            console.log("Viewing issues");
-            subprocess.exec('gh issue list', (err, stdout, stderr) => {
-                if (err) {
-                    console.error(`Error: ${err}`);
-                    return;
-                }
-                agent.sendMessage("general", stdout);
-                agent.prompt(stdout + " " + msg).then((response) => {
-                    agent.sendMessage("general", response);
-                });
-            });
-        }
-
-        // Add an if statement for checking pull requests
-        if (msg.includes("github prs")) {
-            console.log("Checking pull requests");
-            subprocess.exec('gh pr list', (err, stdout, stderr) => {
-                if (err) {
-                    console.error(`Error: ${err}`);
-                    return;
-                }
-                agent.sendMessage("general", stdout);
-                agent.prompt(stdout + " " + msg).then((response) => {
-                    agent.sendMessage("general", response);
-                });
-            });
-        }
-
-
-        // if the message contains the command, then send the github projects
-        // use subprocess to run the command using the gh projects cli
-        // send the output to the chatroom
     } else {
-    //    console.log("message from unallowed user")
-        if (msg.startsWith(agent.agentName)) return;
-        agent.prompt(msg).then((response) => {
-            agent.sendMessage("general", response);
-        });
-
+        console.log("Message from unauthorized user.");
+        sendMessageToChat(`@${username}, you're not authorized to use this command.`);
     }
 });
-
-
-
-// every hour, remind everyone to strech, drink water, and take a break
-//setInterval(() => {
-//    agent.sendMessage("general", "Remember to take a break, drink water, and stretch!");
-//}, 1000 * 60);
-//agent.sendMessage("general", "Hello everyone! I am a chatbot, and I am here to help you with anything you need. Just mention me with @agentchatbot and I will do my best to help you. Remember to strech, drink water, and take a break every hour!");
