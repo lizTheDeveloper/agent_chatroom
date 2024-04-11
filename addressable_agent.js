@@ -6,7 +6,7 @@ const { OpenAI } = require("openai");
 
 
 // agent credentials
-const agentName = "agentchatbot"
+const agentName = "githubby"
 const password = "hi";
 
 
