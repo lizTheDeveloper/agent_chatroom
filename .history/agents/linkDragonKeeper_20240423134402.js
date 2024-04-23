@@ -4,6 +4,8 @@ const pgvector = require('pgvector');
 const OpenAI = require('openai');
 const { processLinkData } = require('./linkDragonScribe.js');
 
+const linkCastleDB = 'postgresql://LinkDragon_owner:gV0OjmR1CxtT@ep-delicate-bread-a4qtryy4.us-east-1.aws.neon.tech/LinkDragon?sslmode=require';
+
 const pool = new Pool({
     connectionString: linkCastleDB,
     ssl: {
